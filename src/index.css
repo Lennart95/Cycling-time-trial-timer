@@ -7,7 +7,7 @@
   --text-dim: #9aa7b4;
   --text-faint: #6b7887;
   --accent: #4f9dff;
-  --accent-strong: #2f7fe6;
+  --accent-strong: #004d9d;
   --go: #37d67a;
   --warn: #f5a623;
   --danger: #ef5064;
@@ -57,6 +57,9 @@ kbd {
   display: flex;
   flex-direction: column;
   height: 100%;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: cover;
 }
 
 .topbar {
@@ -64,8 +67,8 @@ kbd {
   align-items: center;
   gap: 24px;
   padding: 10px 18px;
-  background: var(--bg-elev);
-  border-bottom: 1px solid var(--line);
+  background: var(--accent-strong);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent-strong) 55%, black);
   flex: 0 0 auto;
 }
 
@@ -75,9 +78,10 @@ kbd {
   gap: 10px;
   min-width: 220px;
 }
-.brand-mark {
-  font-size: 20px;
-  color: var(--accent);
+.brand-logo {
+  display: block;
+  height: 22px;
+  width: auto;
 }
 .brand-name {
   font-weight: 650;
@@ -90,16 +94,16 @@ kbd {
   letter-spacing: 0.08em;
   padding: 3px 8px;
   border-radius: 999px;
-  border: 1px solid var(--line);
-  color: var(--text-dim);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: rgba(255, 255, 255, 0.85);
 }
 .status-running {
   color: var(--go);
-  border-color: color-mix(in srgb, var(--go) 50%, transparent);
+  border-color: color-mix(in srgb, var(--go) 60%, transparent);
 }
 .status-paused {
   color: var(--warn);
-  border-color: color-mix(in srgb, var(--warn) 50%, transparent);
+  border-color: color-mix(in srgb, var(--warn) 60%, transparent);
 }
 
 .tabs {
@@ -110,7 +114,7 @@ kbd {
 .tab {
   background: transparent;
   border: 1px solid transparent;
-  color: var(--text-dim);
+  color: rgba(255, 255, 255, 0.75);
   padding: 7px 14px;
   border-radius: 8px;
   cursor: pointer;
@@ -120,26 +124,26 @@ kbd {
   gap: 6px;
 }
 .tab:hover {
-  color: var(--text);
-  background: var(--bg-elev-2);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
 }
 .tab.active {
-  color: var(--text);
-  background: var(--bg-elev-2);
-  border-color: var(--line);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 .tab-badge {
   font-size: 11px;
-  background: var(--bg);
+  background: rgba(0, 0, 0, 0.3);
   border-radius: 999px;
   padding: 0 6px;
-  color: var(--text-faint);
+  color: rgba(255, 255, 255, 0.85);
 }
 
 .tod {
   font-family: var(--mono);
   font-size: 18px;
-  color: var(--text-dim);
+  color: rgba(255, 255, 255, 0.85);
   font-variant-numeric: tabular-nums;
 }
 

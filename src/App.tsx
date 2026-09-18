@@ -6,6 +6,8 @@ import { fmtTimeOfDay } from './lib/time'
 import { SetupView } from './components/SetupView'
 import { RaceView } from './components/RaceView'
 import { ResultsView } from './components/ResultsView'
+import backgroundUrl from './assets/Tubanters background without logo.png'
+import logoUrl from './assets/logo-tubanters-header.svg'
 
 type Tab = 'setup' | 'race' | 'results'
 
@@ -22,10 +24,10 @@ export function App() {
   const status = !running ? 'idle' : paused ? 'paused' : 'running'
 
   return (
-    <div className="app">
+    <div className="app" style={{ backgroundImage: `url(${backgroundUrl})` }}>
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark">◷</span>
+          <img src={logoUrl} alt="Tubanters" className="brand-logo" />
           <span className="brand-name">{raceName || 'Time Trial'}</span>
           <span className={`status-pill status-${status}`}>{status}</span>
         </div>
