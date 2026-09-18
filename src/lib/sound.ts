@@ -8,8 +8,11 @@
 //
 // Every beep is two oscillators (a fundamental plus a sub-octave layer) through
 // one gain envelope — lower and fuller than a single thin sine, still a clean
-// synthesized tone (no noise to denoise). Every tone is scheduled ahead of time
-// on the audio clock, so it lands exactly on the rider's release.
+// synthesized tone (no noise to denoise). Tones are committed to the audio
+// clock only moments before they're due (see scheduleToneAtEpoch) rather than
+// the whole sequence at once, so a stall in the audio hardware's own clock
+// can't silently turn into an accumulating delay — see useCountdown.ts, which
+// drives this with a short-lookahead scheduler.
 
 let ctx: AudioContext | null = null
 
@@ -97,6 +100,10 @@ const PIP_FREQ = 500 // the per-second beeps (10 s marker and 5·4·3·2·1)
 const PIP_MS = 380
 const PIP_GAIN = 0.3
 
+// The 10 s marker is the same tone, held twice as long, so it reads as
+// distinct from the closer, shorter 5·4·3·2·1 pips.
+const MARKER_MS = PIP_MS * 2
+
 const GO_FREQ = 1000 // release tone at zero — an octave above the pips
 const GO_MS = 1100
 const GO_GAIN = 0.34
@@ -105,29 +112,57 @@ const GO_GAIN = 0.34
 const MARKER_SECONDS = [10]
 const FINAL_PIPS = 5
 
+export interface ToneEvent {
+  /** Wall-clock instant (epoch ms) this tone should become audible at. */
+  epochMs: number
+  freq: number
+  durMs: number
+  gain: number
+}
+
 /**
- * Schedule the countdown so the release lands `msUntilStart` from now.
- * `countdownSec` clamps which beeps are used (a 10 s marker is skipped if the
- * configured countdown is shorter than that).
+ * The full set of tones for a countdown ending at `targetEpochMs`, in wall-clock
+ * time — pure data, no audio calls. `countdownSec` clamps which beeps are used
+ * (the 10 s marker is dropped if the configured countdown is shorter).
  */
-export function scheduleCountdown(msUntilStart: number, countdownSec: number): void {
-  cancelCountdown()
+export function countdownPlan(targetEpochMs: number, countdownSec: number): ToneEvent[] {
+  const pips = new Set<number>()
+  for (let k = 1; k <= FINAL_PIPS && k <= countdownSec + 0.05; k++) pips.add(k)
+  const markers = new Set<number>()
+  for (const m of MARKER_SECONDS) if (m <= countdownSec + 0.05 && !pips.has(m)) markers.add(m)
+
+  const plan: ToneEvent[] = [
+    ...[...pips].map((k) => ({
+      epochMs: targetEpochMs - k * 1000,
+      freq: PIP_FREQ,
+      durMs: PIP_MS,
+      gain: PIP_GAIN,
+    })),
+    ...[...markers].map((k) => ({
+      epochMs: targetEpochMs - k * 1000,
+      freq: PIP_FREQ,
+      durMs: MARKER_MS,
+      gain: PIP_GAIN,
+    })),
+  ]
+  plan.push({ epochMs: targetEpochMs, freq: GO_FREQ, durMs: GO_MS, gain: GO_GAIN })
+  return plan.sort((a, b) => a.epochMs - b.epochMs)
+}
+
+/**
+ * Schedule one tone to become audible at wall-clock `epochMs`. Converts to the
+ * audio clock fresh, right now — call this with a short lead time (well under
+ * a second) rather than committing tones far in advance: `AudioContext.currentTime`
+ * runs on the audio hardware's own clock, which can stall or drift relative to
+ * the system clock (device hiccups, load spikes). A tone committed 10+ seconds
+ * ahead has that whole window for such a stall to turn into an audible delay;
+ * one committed moments before doesn't.
+ */
+export function scheduleToneAtEpoch(epochMs: number, freq: number, durMs: number, gain: number): void {
   const a = audio()
   if (a.state === 'suspended') void a.resume()
-
-  // Shift the whole schedule earlier by the output latency, so what's audible
-  // lands on the target instant instead of what's merely queued to the graph.
-  const startAt = a.currentTime + msUntilStart / 1000 - outputLatencySec(a)
-
-  const seconds = new Set<number>()
-  for (let k = 1; k <= FINAL_PIPS && k <= countdownSec + 0.05; k++) seconds.add(k)
-  for (const m of MARKER_SECONDS) if (m <= countdownSec + 0.05) seconds.add(m)
-
-  for (const k of seconds) {
-    const at = startAt - k
-    if (at > a.currentTime + 0.02) scheduleTone(at, PIP_FREQ, PIP_MS, PIP_GAIN)
-  }
-  if (startAt > a.currentTime + 0.02) scheduleTone(startAt, GO_FREQ, GO_MS, GO_GAIN)
+  const at = a.currentTime + (epochMs - Date.now()) / 1000 - outputLatencySec(a)
+  scheduleTone(at, freq, durMs, gain)
 }
 
 /** Immediate release tone — used when a rider is sent early. */

@@ -1,21 +1,27 @@
 import { useEffect, useRef } from 'react'
 import { nextScheduled, scheduledStartEpoch, useStore } from '../store'
-import { cancelCountdown, playGoNow, scheduleCountdown } from '../lib/sound'
+import { cancelCountdown, countdownPlan, playGoNow, scheduleToneAtEpoch } from '../lib/sound'
 
 // Module singleton guard so React StrictMode's double-mount (dev) can't run
 // two countdown engines at once.
 let engineMounted = false
 
-const ARM_WINDOW_SEC = 13 // start scheduling tones this long before a rider's start
-// (must exceed the earliest countdown beep — the 10 s marker — with lead to spare)
+// How far ahead of a tone's due instant we'll commit it to the audio clock.
+// Short on purpose: AudioContext.currentTime runs on the audio hardware's own
+// clock, which can stall relative to the system clock under load — a tone
+// committed 10+ seconds ahead has that whole window for a stall to turn into
+// an audible delay, and over a long session those add up (that was the bug:
+// beeps drifting later and later). Committing only moments before each tone
+// is due means any single hiccup can add at most LOOKAHEAD_MS of lateness,
+// and the next tick's fresh clock reading corrects for the next tone.
+const LOOKAHEAD_MS = 300
 
 /**
- * Drives the start countdown sound. When the target rider comes within the arm
- * window it schedules the pips + release tone on the audio clock (sample-accurate
- * to the target instant). Re-arms when the target changes, or when its instant
- * is moved (e.g. "Countdown next now"); cancels pending pips on pause / stop,
- * and when a rider is released early it drops the leftover pips and sounds the
- * release immediately.
+ * Drives the start countdown sound with a short-lookahead, just-in-time
+ * scheduler (see LOOKAHEAD_MS). Re-arms when the target changes, or when its
+ * instant is moved (e.g. "Countdown next now"); cancels pending tones on
+ * pause / stop, and when a rider is released early it drops the leftover
+ * tones and sounds the release immediately.
  *
  * The target is either a standalone `manualCountdown` (see ManualCountdown —
  * takes priority, since it's a deliberate one-rider action) or the shared
@@ -26,6 +32,7 @@ export function useCountdown(): void {
   const st = useRef({
     armedFor: null as string | null,
     armedSched: null as number | null,
+    firedEpochs: new Set<number>(),
     startedIds: new Set<string>(),
     primed: false,
   })
@@ -57,13 +64,14 @@ export function useCountdown(): void {
           const armed = s.participants.find((p) => p.id === freshId)
           const expected = st.current.armedSched
           if (armed?.startTime != null && expected != null && armed.startTime < expected - 250) {
-            // released early (e.g. "Start next now") — drop pips, sound GO now
+            // released early (e.g. "Start next now") — drop pending tones, sound GO now
             cancelCountdown()
             playGoNow()
           }
-          // released on schedule: the pre-scheduled GO fires on its own
+          // released on schedule: the already-committed GO fires on its own
           st.current.armedFor = null
           st.current.armedSched = null
+          st.current.firedEpochs = new Set()
         }
       }
 
@@ -72,6 +80,7 @@ export function useCountdown(): void {
           cancelCountdown()
           st.current.armedFor = null
           st.current.armedSched = null
+          st.current.firedEpochs = new Set()
         }
       }
 
@@ -111,11 +120,22 @@ export function useCountdown(): void {
         if (st.current.armedFor !== targetId || rescheduled) unarm()
       }
 
-      const secsLeft = (targetSched - Date.now()) / 1000
-      if (st.current.armedFor == null && secsLeft > 0.1 && secsLeft <= ARM_WINDOW_SEC + 0.05) {
+      if (st.current.armedFor == null) {
         st.current.armedFor = targetId
         st.current.armedSched = targetSched
-        scheduleCountdown(targetSched - Date.now(), s.config.countdownSec)
+        st.current.firedEpochs = new Set()
+      }
+
+      // Just-in-time: commit each tone only once it's within LOOKAHEAD_MS of
+      // due, converting to the audio clock fresh at that moment.
+      const now = Date.now()
+      for (const tone of countdownPlan(targetSched, s.config.countdownSec)) {
+        if (st.current.firedEpochs.has(tone.epochMs)) continue
+        const delta = tone.epochMs - now
+        if (delta > LOOKAHEAD_MS) continue // not due yet — check again next tick
+        st.current.firedEpochs.add(tone.epochMs) // handle exactly once, due or overdue
+        if (delta >= -500) scheduleToneAtEpoch(tone.epochMs, tone.freq, tone.durMs, tone.gain)
+        // else: badly overdue (the app was frozen) — skip rather than firing a burst of stale beeps
       }
     }, 50)
 
