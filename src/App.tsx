@@ -6,10 +6,11 @@ import { fmtTimeOfDay } from './lib/time'
 import { SetupView } from './components/SetupView'
 import { RaceView } from './components/RaceView'
 import { ResultsView } from './components/ResultsView'
+import { CourseView } from './components/CourseView'
 import backgroundUrl from './assets/Tubanters background without logo.png'
 import logoUrl from './assets/logo-tubanters-header.svg'
 
-type Tab = 'setup' | 'race' | 'results'
+type Tab = 'setup' | 'race' | 'map' | 'results'
 
 export function App() {
   useRaceClock()
@@ -39,6 +40,9 @@ export function App() {
           <button className={tab === 'race' ? 'tab active' : 'tab'} onClick={() => setTab('race')}>
             Race
           </button>
+          <button className={tab === 'map' ? 'tab active' : 'tab'} onClick={() => setTab('map')}>
+            Map
+          </button>
           <button
             className={tab === 'results' ? 'tab active' : 'tab'}
             onClick={() => setTab('results')}
@@ -55,6 +59,7 @@ export function App() {
       <main className="content">
         {tab === 'setup' && <SetupView />}
         {tab === 'race' && <RaceView />}
+        {tab === 'map' && <CourseView />}
         {tab === 'results' && <ResultsView />}
       </main>
     </div>

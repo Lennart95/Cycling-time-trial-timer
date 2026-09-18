@@ -40,6 +40,13 @@ export interface RaceConfig {
   /** Course distance in kilometres. 0/unset hides average speed in results. */
   courseDistanceKm: number
   /**
+   * Manually-entered expected average speed (km/h), used to estimate on-course
+   * riders' position on the course map before anyone has finished. 0/unset =
+   * no estimate until a real finisher time is available. Once a rider
+   * finishes, the actual average speed takes over as the more accurate figure.
+   */
+  expectedAvgSpeedKmh: number
+  /**
    * Scheduled clock time ("HH:MM") for rider 1's start. Empty = unset: Start
    * race begins the countdown immediately instead of targeting a clock time.
    */
@@ -64,6 +71,20 @@ export interface ManualCountdown {
   dueAt: number // epoch ms
 }
 
+export interface CoursePoint {
+  lat: number
+  lon: number
+  ele?: number
+}
+
+/** A parsed GPX route. `cumKm[i]` is the distance from the start to `points[i]`. */
+export interface Course {
+  name: string
+  points: CoursePoint[]
+  cumKm: number[]
+  distanceKm: number
+}
+
 export interface PersistedState {
   version: number
   config: RaceConfig
@@ -75,4 +96,5 @@ export interface PersistedState {
   paused: boolean
   pausedAt: number | null
   manualCountdown: ManualCountdown | null
+  course: Course | null
 }

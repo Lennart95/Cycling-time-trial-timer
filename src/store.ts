@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type {
+  Course,
   FinishCapture,
   ManualCountdown,
   Participant,
@@ -21,6 +22,7 @@ const DEFAULT_CONFIG: RaceConfig = {
   startIntervalSec: 60,
   countdownSec: 10,
   courseDistanceKm: 0,
+  expectedAvgSpeedKmh: 0,
   plannedStartTime: '',
 }
 
@@ -103,6 +105,26 @@ export function computeResults(s: Pick<StoreState, 'participants'>): ResultRow[]
 }
 
 /**
+ * Assumed average speed (km/h) for projecting on-course riders' position along
+ * the course. Prefers the real average of finishers-so-far once there is one
+ * (more accurate); falls back to the manually-entered
+ * `config.expectedAvgSpeedKmh` so positions can show from the start of the
+ * race. Returns null if neither is available, or the course distance isn't
+ * known — callers should just not plot positions then, rather than invent a
+ * number.
+ */
+export function estimatedPaceKmh(s: Pick<StoreState, 'participants' | 'config'>): number | null {
+  if (!(s.config.courseDistanceKm > 0)) return null
+  const results = computeResults(s)
+  if (results.length > 0) {
+    const avgElapsedMs = results.reduce((sum, r) => sum + r.elapsed, 0) / results.length
+    if (avgElapsedMs > 0) return s.config.courseDistanceKm / (avgElapsedMs / 3_600_000)
+  }
+  if (s.config.expectedAvgSpeedKmh > 0) return s.config.expectedAvgSpeedKmh
+  return null
+}
+
+/**
  * Re-derive each participant's finishTime/status from the finish captures.
  * Skips DNS/DNF riders and any rider whose finish was entered by hand.
  */
@@ -169,6 +191,7 @@ function emptyPersisted(): PersistedState {
     paused: false,
     pausedAt: null,
     manualCountdown: null,
+    course: null,
   }
 }
 
@@ -231,6 +254,9 @@ export interface StoreState extends Omit<PersistedState, 'version'> {
   setParticipantStatus: (id: string, status: ParticipantStatus) => void
   setParticipantStart: (id: string, epoch: number | null) => void
   setParticipantFinish: (id: string, epoch: number | null) => void
+
+  // course (GPX)
+  setCourse: (course: Course | null) => void
 
   // import a whole race file
   loadRace: (data: PersistedState) => void
@@ -644,6 +670,16 @@ export const useStore = create<StoreState>((set, get) => ({
       return { finishes, participants: reconcile(participants, finishes) }
     }),
 
+  setCourse: (course) =>
+    set((s) => ({
+      course,
+      // The GPX is the authoritative distance once you have one — keeps average
+      // speed in Results consistent with what's actually drawn on the map.
+      config: course
+        ? { ...s.config, courseDistanceKm: Math.round(course.distanceKm * 100) / 100 }
+        : s.config,
+    })),
+
   loadRace: (data) =>
     set(() => {
       const base = emptyPersisted()
@@ -682,6 +718,7 @@ export function exportRaceJSON(): string {
     paused: s.paused,
     pausedAt: s.pausedAt,
     manualCountdown: s.manualCountdown,
+    course: s.course,
   }
   return JSON.stringify(snapshot, null, 2)
 }

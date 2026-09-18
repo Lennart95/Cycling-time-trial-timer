@@ -11,6 +11,7 @@ import {
 import { useNow } from '../hooks/useNow'
 import { useCountdown } from '../hooks/useCountdown'
 import { unlockAudio } from '../lib/sound'
+import { riderColor } from '../lib/riderColors'
 import { fmtClock, fmtElapsed, fmtTimeOfDay, fmtTimeOfDayMs } from '../lib/time'
 
 export function RaceView() {
@@ -22,6 +23,7 @@ export function RaceView() {
   const finishes = useStore((s) => s.finishes)
   const running = useStore((s) => s.running)
   const paused = useStore((s) => s.paused)
+  const pausedAt = useStore((s) => s.pausedAt)
   const sequenceStartedAt = useStore((s) => s.sequenceStartedAt)
 
   const startSequence = useStore((s) => s.startSequence)
@@ -142,7 +144,11 @@ export function RaceView() {
   }
 
   // seconds to the next start; drives the big countdown
-  const secsToNext = nextSched != null ? (nextSched - now) / 1000 : null
+  // Freeze the displayed countdown at the moment of pause — the underlying
+  // schedule doesn't move until resume (pauseOffsetMs), so ticking against the
+  // live clock here would count down through real time even while paused.
+  const clockForCountdown = paused && pausedAt != null ? pausedAt : now
+  const secsToNext = nextSched != null ? (nextSched - clockForCountdown) / 1000 : null
   const inCountdown = secsToNext != null && secsToNext <= config.countdownSec && secsToNext > -1
 
   return (
@@ -355,7 +361,9 @@ export function RaceView() {
                         : 'Press FINISH first to capture a time'
                     }
                   >
-                    <span className="oc-bib">{p.bib}</span>
+                    <span className="oc-bib" style={{ color: riderColor(p.startOrder) }}>
+                      {p.bib}
+                    </span>
                     <span className="oc-name">{p.name}</span>
                     <span className="oc-start">started {fmtTimeOfDay(p.startTime)}</span>
                   </button>
@@ -376,8 +384,8 @@ export function RaceView() {
           </ul>
         )}
         <p className="hint">
-          Tip: press <kbd>FINISH</kbd>, then click the rider who crossed the line — or tap 🏁 next
-          to a rider for a one-click finish when there's no ambiguity.
+          Tip: click the rider who crossed the line to assign the selected finish time — or tap
+          🏁 next to them for a one-click finish when there's no ambiguity.
         </p>
       </section>
 
@@ -393,6 +401,10 @@ export function RaceView() {
           FINISH
           <small>captures a time · shortcut F or Space</small>
         </button>
+        <p className="hint">
+          Then assign it to the rider who crossed the line — click them in On course, or pick them
+          below.
+        </p>
 
         <h3>
           Unassigned <span className="count">{pending.length}</span>

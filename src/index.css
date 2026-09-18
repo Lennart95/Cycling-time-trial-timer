@@ -199,6 +199,17 @@ kbd {
   max-width: 1200px;
   margin: 0 auto;
 }
+.course-view {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+.course-view .panel {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
 .race-view {
   grid-template-columns: minmax(280px, 340px) 1fr minmax(300px, 380px);
   align-items: start;
@@ -309,12 +320,17 @@ select:focus {
   gap: 12px;
 }
 .form-grid label,
-.add-form label {
+.add-form label,
+.course-pace-field {
   display: flex;
   flex-direction: column;
   gap: 5px;
   font-size: 12px;
   color: var(--text-dim);
+}
+.course-pace-field {
+  max-width: 220px;
+  margin-top: 12px;
 }
 
 .add-form {
@@ -439,6 +455,58 @@ td.strong,
 
 /* ---- race: control column ---------------------------------- */
 
+.weather-readout {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.course-map-wrap .weather-readout {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 2;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(3px);
+}
+.weather-item {
+  white-space: nowrap;
+}
+.weather-item.hint {
+  margin: 0;
+}
+.weather-refresh {
+  margin-left: auto;
+  font-size: 13px;
+  line-height: 1;
+  padding: 2px 7px;
+}
+.wind-vane {
+  flex: 0 0 auto;
+}
+.wind-vane-ring {
+  fill: none;
+  stroke: var(--line);
+  stroke-width: 1.5;
+}
+.wind-vane-n {
+  fill: var(--text-faint);
+  font-size: 7px;
+  font-family: var(--mono);
+  text-anchor: middle;
+}
+.wind-vane-arrow {
+  fill: var(--accent);
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+
 .starter-idle {
   display: flex;
   flex-direction: column;
@@ -542,6 +610,56 @@ td.strong,
 
 /* ---- race: on course ------------------------------------- */
 
+.course-wrap {
+  margin-top: 14px;
+}
+.course-map {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: var(--bg);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+}
+.course-view .course-map-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+.course-view .course-map {
+  flex: 1 1 auto;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+}
+.course-path {
+  stroke: var(--text-faint);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.course-start {
+  fill: var(--go);
+}
+.course-finish {
+  fill: var(--danger);
+}
+.course-rider circle {
+  fill: var(--accent);
+  stroke: var(--bg);
+  stroke-width: 1.5;
+}
+.course-rider text {
+  fill: var(--text);
+  font-family: var(--mono);
+  font-size: 6.5px;
+  paint-order: stroke;
+  stroke: var(--bg);
+  stroke-width: 2.5px;
+  stroke-linejoin: round;
+}
+
 .oncourse-list {
   list-style: none;
   margin: 0;
@@ -621,6 +739,19 @@ td.strong,
   padding: 8px 12px;
   margin-bottom: 10px;
   font-size: 13px;
+}
+
+.import-review {
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg));
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+  border-radius: 9px;
+  padding: 10px 12px;
+}
+.import-review .hint {
+  margin-top: 0;
+}
+.import-review .row-actions {
+  margin-top: 10px;
 }
 
 /* ---- race: finish -------------------------------------- */
