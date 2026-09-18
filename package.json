@@ -1,0 +1,49 @@
+{
+  "name": "cycling-tt-timer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Desktop app to time participants during a cycling time trial: start order, interval countdown, auto-advancing starts, single finish button with deferred assignment, and results.",
+  "author": "lennart.van.der.kamp@gmail.com",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "concurrently -k -n vite,electron -c blue,green \"npm:dev:vite\" \"npm:dev:electron\"",
+    "dev:vite": "vite",
+    "dev:electron": "wait-on tcp:127.0.0.1:5173 && node scripts/run-electron.js --dev",
+    "start": "vite build && node scripts/run-electron.js",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "dist": "vite build && electron-builder"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^4.5.5"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^8.2.2",
+    "cross-env": "^7.0.3",
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3",
+    "typescript": "^5.4.5",
+    "vite": "^4.5.5",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "appId": "com.example.cycling-tt-timer",
+    "productName": "Cycling TT Timer",
+    "files": [
+      "dist/**/*",
+      "electron/**/*"
+    ],
+    "directories": {
+      "output": "release"
+    },
+    "win": {
+      "target": "nsis"
+    }
+  }
+}
